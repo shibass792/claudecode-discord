@@ -8,6 +8,7 @@ import {
   getProject,
   getSession,
   setAutoApprove,
+  recordTurn,
 } from "../db/database.js";
 import { getConfig } from "../utils/config.js";
 import { L } from "../utils/i18n.js";
@@ -378,6 +379,8 @@ class SessionManager {
                   "🔑 Claude Code 로그인이 필요합니다. 호스트 PC에서 터미널을 열고 `claude login`을 실행하여 인증 후 다시 시도해 주세요.",
                 ));
               }
+
+              recordTurn(dbId, resultMsg.total_cost_usd ?? 0);
 
               updateSessionStatus(channelId, "idle");
               hasResult = true;
