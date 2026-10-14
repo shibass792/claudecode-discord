@@ -18,6 +18,7 @@ import {
   createResultEmbed,
   createStopButton,
   createCompletedButton,
+  getTurnWarning,
   splitMessage,
   type AskQuestionData,
 } from "./output-formatter.js";
@@ -380,7 +381,11 @@ class SessionManager {
                 ));
               }
 
-              recordTurn(dbId, resultMsg.total_cost_usd ?? 0);
+              const turnCount = recordTurn(dbId, resultMsg.total_cost_usd ?? 0);
+              const turnWarning = getTurnWarning(turnCount, getConfig().SESSION_TURN_WARNING);
+              if (turnWarning) {
+                await channel.send(turnWarning);
+              }
 
               updateSessionStatus(channelId, "idle");
               hasResult = true;

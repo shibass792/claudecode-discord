@@ -15,7 +15,7 @@ vi.mock("../db/database.js", () => ({
 }));
 
 vi.mock("../utils/config.js", () => ({
-  getConfig: vi.fn(() => ({ SHOW_COST: true })),
+  getConfig: vi.fn(() => ({ SHOW_COST: true, SESSION_TURN_WARNING: 30 })),
 }));
 
 vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
@@ -188,6 +188,32 @@ describe("SessionManager", () => {
 
       expect(recordTurn).toHaveBeenCalledTimes(1);
       expect(recordTurn).toHaveBeenCalledWith("row-1", 0.42);
+    });
+
+    function sentTexts(channel: { send: ReturnType<typeof vi.fn> }): string[] {
+      return channel.send.mock.calls.map(([arg]) =>
+        typeof arg === "string" ? arg : (arg?.content ?? ""),
+      );
+    }
+
+    it("posts a long-session warning when the turn count hits the threshold", async () => {
+      mockSdkStream([{ type: "result", result: "done", total_cost_usd: 0, duration_ms: 1 }]);
+      vi.mocked(recordTurn).mockReturnValue(30);
+      const channel = mockChannel("ch-turns");
+
+      await sessionManager.sendMessage(channel, "hi");
+
+      expect(sentTexts(channel).some((t) => t.includes("30 turns"))).toBe(true);
+    });
+
+    it("does not warn below the threshold", async () => {
+      mockSdkStream([{ type: "result", result: "done", total_cost_usd: 0, duration_ms: 1 }]);
+      vi.mocked(recordTurn).mockReturnValue(4);
+      const channel = mockChannel("ch-turns");
+
+      await sessionManager.sendMessage(channel, "hi");
+
+      expect(sentTexts(channel).some((t) => t.includes("turns"))).toBe(false);
     });
 
     it("does not record a turn when the query fails before a result", async () => {
